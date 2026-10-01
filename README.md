@@ -69,6 +69,76 @@ Phase 1 implements the catalog part of the [class diagram](docs/class-diagram.md
 - `npm run seed` clears the catalog collections and inserts realistic web development courses (published, draft and archived) with their modules and resources.
 - `npm run db:reset` drops the whole database, re-creates the indexes and runs the seed.
 
+## API
+
+Base URL: `http://localhost:3000/api`
+
+### Course catalog (read-only)
+
+| Method | Route | Description |
+| ------ | ----- | ----------- |
+| GET | `/api/courses` | List published courses (filtering, sorting, pagination) |
+| GET | `/api/courses/:id` | Get a published course with its category |
+| GET | `/api/courses/:id/modules` | List the modules of a published course (sorted by `order`) |
+| GET | `/api/modules/:id/resources` | List the resources of a module of a published course (sorted by `order`) |
+| GET | `/api/categories` | List categories (to build the `category` filter) |
+| GET | `/api/health` | Health check |
+
+Query parameters of `GET /api/courses`:
+
+| Parameter | Example | Description |
+| --------- | ------- | ----------- |
+| `category` | `backend` | Category slug or id |
+| `level` | `beginner` | `beginner`, `intermediate` or `advanced` |
+| `keyword` | `node` | Case-insensitive search in title, description and tags |
+| `sort` | `-publishedAt` | `createdAt`, `-createdAt`, `publishedAt`, `-publishedAt` (default `-publishedAt`, `-` = descending) |
+| `page` | `1` | Page number (default `1`) |
+| `limit` | `10` | Items per page (default `10`, max `50`) |
+
+```bash
+curl "http://localhost:3000/api/courses?category=frontend&level=beginner&sort=publishedAt&page=1&limit=5"
+```
+
+```json
+{
+  "data": [{ "_id": "...", "title": "HTML & CSS Fundamentals", "level": "beginner", "category": { "name": "Frontend", "slug": "frontend" }, "...": "..." }],
+  "meta": { "total": 2, "page": 1, "limit": 5, "totalPages": 1 }
+}
+```
+
+Draft and archived courses (and their modules/resources) are never exposed: they return `404`.
+
+### Errors
+
+Every error returns a consistent JSON body with the matching HTTP status code:
+
+```json
+{ "error": { "status": 404, "message": "Course not found: 6650a1f2c3b4d5e6f7a8b902" } }
+```
+
+| Status | When |
+| ------ | ---- |
+| `400` | Invalid id or query parameter, Mongoose validation error (with `details`) |
+| `404` | Unknown route, or course/module not found or not published |
+| `409` | Duplicate value (unique index) |
+| `500` | Unexpected error (message hidden, stack trace only in `development`) |
+
+### Authentication
+
+There is **no authentication in Phase 1**: all routes are public and read-only. No trainer CRUD routes are exposed; course data is managed through the seed script. Authentication, roles and trainer course management are planned for Phase 2 (see the [backlog](docs/analysis-backlog.md)).
+
+### Swagger / OpenAPI
+
+Interactive documentation is available at **http://localhost:3000/api-docs** (raw OpenAPI document: `/api-docs.json`).
+
+## Tests
+
+```bash
+npm test
+```
+
+Tests use Node's built-in test runner with [Supertest](https://github.com/ladjs/supertest) and [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server): they start an in-memory MongoDB (no Docker needed, the binary is downloaded on the first run), load the seed data and exercise every catalog route.
+
 Stop the database with `npm run db:down` (data is kept in the `mongo-data` docker volume).
 
 ## Environment variables
@@ -88,6 +158,7 @@ Never commit your `.env` file; only `.env.example` is versioned.
 ├── docker-compose.yml     # Local MongoDB
 ├── docs/                  # Product analysis & UML diagrams
 ├── .env.example
+├── tests/                 # API tests
 └── src
     ├── app.js             # Express app (middlewares + routes)
     ├── server.js          # HTTP server entry point
@@ -95,7 +166,10 @@ Never commit your `.env` file; only `.env.example` is versioned.
     ├── routes/            # Express routers
     ├── controllers/       # Request handlers
     ├── models/            # Mongoose models
-    └── middlewares/       # Express middlewares (errors, ...)
+    ├── middlewares/       # Express middlewares (notFound, errorHandler, ...)
+    ├── docs/              # OpenAPI specification
+    ├── seed/              # Seed data and script
+    └── utils/             # Small helpers
 ```
 
 ## npm scripts
@@ -104,6 +178,7 @@ Never commit your `.env` file; only `.env.example` is versioned.
 | ----------------- | -------------------------------- |
 | `npm start`       | Start the API                    |
 | `npm run dev`     | Start the API with nodemon       |
+| `npm test`        | Run the automated tests          |
 | `npm run seed`    | Seed the catalog with sample data |
 | `npm run db:reset`| Drop the database and re-seed    |
 | `npm run db:up`   | Start MongoDB with Docker        |

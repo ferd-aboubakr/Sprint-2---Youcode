@@ -11,6 +11,15 @@ This repository is developed in 3 phases. **Phase 1** (current) is foundational:
 
 Real authentication and the full LMS feature set are out of scope for Phase 1.
 
+## Design documentation
+
+The product analysis and UML design live in [`docs/`](docs/README.md):
+
+- [Product analysis & backlog](docs/analysis-backlog.md)
+- [Class diagram](docs/class-diagram.md)
+- [Use case diagram](docs/use-case-diagram.md)
+- [Course enrollment sequence diagram](docs/sequence-enrollment.md)
+
 ## Prerequisites
 
 - Node.js >= 20 and npm
@@ -58,6 +67,7 @@ Never commit your `.env` file; only `.env.example` is versioned.
 ```
 .
 ├── docker-compose.yml     # Local MongoDB
+├── docs/                  # Product analysis & UML diagrams
 ├── .env.example
 └── src
     ├── app.js             # Express app (middlewares + routes)
